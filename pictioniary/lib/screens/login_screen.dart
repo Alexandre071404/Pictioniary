@@ -96,6 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
                 child: Card(
+                  color: Colors.white,
                   elevation: 12,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
@@ -127,6 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           TextFormField(
                             controller: _nameController,
+                            style: const TextStyle(color: Colors.black87),
                             decoration: InputDecoration(
                               labelText: 'Nom d\'utilisateur',
                               hintText: 'Entre ton nom d\'utilisateur...',
@@ -135,7 +137,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.grey[50],
+                              fillColor: Colors.white,
+                              labelStyle: const TextStyle(color: Colors.black87),
+                              hintStyle: const TextStyle(color: Colors.black54),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.black.withOpacity(0.2)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                              ),
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
@@ -153,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: true,
+                            style: const TextStyle(color: Colors.black87),
                             decoration: InputDecoration(
                               labelText: 'Mot de passe',
                               hintText: 'Entre ton mot de passe...',
@@ -161,7 +174,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               filled: true,
-                              fillColor: Colors.grey[50],
+                              fillColor: Colors.white,
+                              labelStyle: const TextStyle(color: Colors.black87),
+                              hintStyle: const TextStyle(color: Colors.black54),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.black.withOpacity(0.2)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
+                              ),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {

@@ -203,4 +203,67 @@ class ApiService {
       return {'success': false, 'error': 'Erreur de connexion: $e'};
     }
   }
+
+  static Future<Map<String, dynamic>> sendChallenge({
+    required String gameSessionId,
+    required String firstWord,
+    required String secondWord,
+    required String thirdWord,
+    required String fourthWord,
+    required String fifthWord,
+    required List<String> forbiddenWords,
+  }) async {
+    try {
+      developer.log('POST /game_sessions/$gameSessionId/challenges', name: 'ApiService');
+      final response = await http.post(
+        Uri.parse('$baseUrl/game_sessions/$gameSessionId/challenges'),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'first_word': firstWord,
+          'second_word': secondWord,
+          'third_word': thirdWord,
+          'fourth_word': fourthWord,
+          'fifth_word': fifthWord,
+          'forbidden_words': forbiddenWords,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': jsonDecode(response.body)};
+      } else {
+        Map<String, dynamic>? errorData;
+        try { errorData = jsonDecode(response.body); } catch (_) {}
+        return {'success': false, 'error': errorData?['error'] ?? 'Erreur lors de l\'envoi du challenge'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMyChallenges(String gameSessionId) async {
+    try {
+      developer.log('GET /game_sessions/$gameSessionId/myChallenges', name: 'ApiService');
+      final response = await http.get(
+        Uri.parse('$baseUrl/game_sessions/$gameSessionId/myChallenges'),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'error': 'Erreur lors de la récupération des challenges'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
 }

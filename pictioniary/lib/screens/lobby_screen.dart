@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import '../data/api_service.dart';
+import 'challenge_submission_screen.dart';
 
 class LobbyScreen extends StatefulWidget {
   final String gameSessionId;
@@ -27,6 +28,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
   bool isJoining = false;
   Timer? _timer;
   String debugInfo = '';
+  bool _navigatedToPhase = false;
 
   @override
   void initState() {
@@ -137,7 +139,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
         });
 
         // Si le statut a changé vers challenge
-        if (newStatus != 'lobby') {
+        if (newStatus == 'challenge' && !_navigatedToPhase && mounted) {
+          _navigatedToPhase = true;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => ChallengeSubmissionScreen(
+                gameSessionId: widget.gameSessionId,
+                playerData: widget.playerData,
+              ),
+            ),
+          );
+          return; // éviter suite
+        } else if (newStatus != 'lobby') {
           _showSnackBar('La partie a démarré ! Statut: $newStatus', isSuccess: true);
         }
       } else {
@@ -547,7 +560,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+            colors: [Color(0xFF0F172A), Color(0xFF111827)],
           ),
         ),
         child: SafeArea(
@@ -560,22 +573,15 @@ class _LobbyScreenState extends State<LobbyScreen> {
               : Column(
                   children: [
                     // Header
-                    Container(
-                      padding: const EdgeInsets.all(16),
+                    Card(
                       margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
                         children: [
                           Text(
                             'Session: ${widget.gameSessionId}',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -591,6 +597,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                             ),
                           ),
                         ],
+                        ),
                       ),
                     ),
 
@@ -616,9 +623,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                     // Boutons
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2),
-                      ),
+                      decoration: BoxDecoration(color: Colors.black.withOpacity(0.25)),
                       child: Column(
                         children: [
                           if (!hasJoined && !isJoining)
@@ -627,10 +632,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: () => _joinTeam('red'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                    ),
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red, padding: const EdgeInsets.symmetric(vertical: 16)),
                                     child: const Text('Rouge'),
                                   ),
                                 ),
@@ -638,10 +640,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
                                 Expanded(
                                   child: ElevatedButton(
                                     onPressed: () => _joinTeam('blue'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                      padding: const EdgeInsets.symmetric(vertical: 16),
-                                    ),
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, padding: const EdgeInsets.symmetric(vertical: 16)),
                                     child: const Text('Bleu'),
                                   ),
                                 ),

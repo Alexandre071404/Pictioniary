@@ -26,6 +26,30 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     setState(() => _isLoading = true);
 
     final gameSessionId = _idController.text.trim();
+    // Vérifier d'abord le statut et patienter si besoin (jusqu'à ~3s)
+    String currentStatus = 'unknown';
+    try {
+      final st = await ApiService.getGameSessionStatus(gameSessionId);
+      if (st['success'] == true) currentStatus = st['data']['status'] ?? 'unknown';
+    } catch (_) {}
+
+    if (currentStatus != 'lobby') {
+      // Petite attente pour laisser la session passer en lobby après création
+      for (int i = 0; i < 3 && currentStatus != 'lobby'; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        try {
+          final st = await ApiService.getGameSessionStatus(gameSessionId);
+          if (st['success'] == true) currentStatus = st['data']['status'] ?? 'unknown';
+        } catch (_) {}
+      }
+    }
+
+    if (currentStatus != 'lobby') {
+      _showSnackBar('La partie n\'est pas en attente de joueurs (statut: $currentStatus)');
+      setState(() => _isLoading = false);
+      return;
+    }
+
     Map<String, dynamic> result = await ApiService.joinGameSession(gameSessionId, color);
     
     developer.log('Join result: $result', name: 'JoinGameScreen');
@@ -211,8 +235,15 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Rejoindre une partie')),
-      body: Padding(
+      appBar: AppBar(title: const Text('Rejoindre une partie'), backgroundColor: const Color(0xFF667EEA)),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0F172A), Color(0xFF111827)],
+          ),
+        ),
         padding: const EdgeInsets.all(24.0),
         child: Form(
           key: _formKey,
@@ -252,14 +283,12 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                 if (_sessionData != null) ...[
                   const SizedBox(height: 24),
                   Card(
-                    elevation: 0,
-                    color: Colors.grey.shade100,
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('Statut: $_status', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Statut: $_status', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                           const SizedBox(height: 12),
                           _buildTeamPreview('Équipe Rouge', 'red', Colors.red),
                           const SizedBox(height: 12),

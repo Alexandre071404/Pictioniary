@@ -137,6 +137,7 @@ class MenuScreen extends StatelessWidget {
             builder: (context) => LobbyScreen(
               gameSessionId: gameSessionId.toString(),
               playerData: playerData,
+              createdByCurrentUser: true,
             ),
           ),
         );

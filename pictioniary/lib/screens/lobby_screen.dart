@@ -6,11 +6,13 @@ import '../data/api_service.dart';
 class LobbyScreen extends StatefulWidget {
   final String gameSessionId;
   final Map<String, dynamic> playerData;
+  final bool createdByCurrentUser;
 
   const LobbyScreen({
     super.key,
     required this.gameSessionId,
     required this.playerData,
+    this.createdByCurrentUser = false,
   });
 
   @override
@@ -198,6 +200,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
   }
 
   bool _isCurrentPlayerHost() {
+    // Si l'écran a été ouvert suite à une création de partie par l'utilisateur courant,
+    // on considère qu'il est l'hôte (fallback si l'API ne renvoie pas encore le champ owner/host)
+    if (widget.createdByCurrentUser) return true;
+
     final data = sessionData ?? {};
     final currentId = (widget.playerData['id'] ?? widget.playerData['_id'])?.toString();
     if (currentId == null) return false;
@@ -222,6 +228,16 @@ class _LobbyScreenState extends State<LobbyScreen> {
     ].whereType<String>();
 
     return candidates.any((id) => id == currentId);
+  }
+
+  int _getTotalTeamPlayers() {
+    final red = (sessionData?['red_team'] as List?) ?? (sessionData?['redTeam'] as List?) ?? const [];
+    final blue = (sessionData?['blue_team'] as List?) ?? (sessionData?['blueTeam'] as List?) ?? const [];
+    final Set<String> ids = {
+      ...red.map((e) => e is Map ? (e['id'] ?? e['_id'])?.toString() : e?.toString()).whereType<String>(),
+      ...blue.map((e) => e is Map ? (e['id'] ?? e['_id'])?.toString() : e?.toString()).whereType<String>(),
+    };
+    return ids.length;
   }
 
   Future<void> _joinTeam(String color) async {
@@ -636,30 +652,35 @@ class _LobbyScreenState extends State<LobbyScreen> {
                               valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
                           if (hasJoined && status == 'lobby')
-                            (_isCurrentPlayerHost()
-                                ? SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _startGame,
-                                      icon: const Icon(Icons.play_arrow, size: 28),
-                                      label: const Text(
-                                        'LANCER LA PARTIE',
-                                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                      ),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                        padding: const EdgeInsets.symmetric(vertical: 18),
-                                      ),
+                            (() {
+                              final isHost = _isCurrentPlayerHost();
+                              final total = _getTotalTeamPlayers();
+                              if (isHost && total >= 2) {
+                                return SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _startGame,
+                                    icon: const Icon(Icons.play_arrow, size: 28),
+                                    label: const Text(
+                                      'LANCER LA PARTIE',
+                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                     ),
-                                  )
-                                : const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 12),
-                                    child: Text(
-                                      'En attente de l\'hôte…',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      padding: const EdgeInsets.symmetric(vertical: 18),
                                     ),
-                                  )),
+                                  ),
+                                );
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(
+                                  isHost ? 'En attente d\'un autre joueur…' : 'En attente de l\'hôte…',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+                                ),
+                              );
+                            }()),
                         ],
                       ),
                     ),

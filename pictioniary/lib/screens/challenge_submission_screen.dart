@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../data/api_service.dart';
 
@@ -29,12 +30,28 @@ class _ChallengeSubmissionScreenState extends State<ChallengeSubmissionScreen> {
 
   bool _submitting = false;
   int _submittedCount = 0;
-  final int _required = 3; // ajusté: 3 challenges par joueur
+  final int _required = 3; // 3 challenges requis par joueur selon les règles
+  bool _navigated = false;
+  Timer? _phaseTimer;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Verifier si la phase a changé pour diriger vers la suite
+    _checkPhaseAndNavigate();
+  }
 
   @override
   void initState() {
     super.initState();
     _loadMyChallengesCount();
+    _startPhasePolling();
+  }
+
+  @override
+  void dispose() {
+    _phaseTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadMyChallengesCount() async {
@@ -49,6 +66,53 @@ class _ChallengeSubmissionScreenState extends State<ChallengeSubmissionScreen> {
       }
       setState(() => _submittedCount = count);
     }
+  }
+
+  Future<void> _checkPhaseAndNavigate() async {
+    // Interroge le statut puis décide du rôle par disponibilité des listes
+    final status = await ApiService.getGameSessionStatus(widget.gameSessionId);
+    if (status['success'] == true) {
+      final s = status['data']['status'];
+      if (s == 'drawing' || s == 'guessing') {
+        if (_navigated) return;
+        // Vérifier si des challenges à dessiner sont disponibles
+        final mine = await ApiService.getMyChallenges(widget.gameSessionId);
+        if (mine['success'] == true) {
+          final items = mine['data'] is List ? (mine['data'] as List) : (mine['data']?['items'] as List?);
+          if ((items?.isNotEmpty ?? false)) {
+            if (!mounted) return;
+            _navigated = true;
+            Navigator.of(context).pushReplacementNamed(
+              '/drawing',
+              arguments: {
+                'gameSessionId': widget.gameSessionId,
+                'playerData': widget.playerData,
+              },
+            );
+            return;
+          }
+        }
+        // Sinon, rôle devineur (attente)
+        if (!mounted) return;
+        _navigated = true;
+        Navigator.of(context).pushReplacementNamed(
+          '/guessing_wait',
+          arguments: {
+            'gameSessionId': widget.gameSessionId,
+            'playerData': widget.playerData,
+          },
+        );
+      }
+    }
+  }
+
+  void _startPhasePolling() {
+    _phaseTimer?.cancel();
+    _phaseTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!_navigated && mounted) {
+        _checkPhaseAndNavigate();
+      }
+    });
   }
 
   Future<void> _submit() async {

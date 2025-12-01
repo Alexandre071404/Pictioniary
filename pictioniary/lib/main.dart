@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
+import 'screens/drawing_screen.dart';
+import 'screens/guessing_wait_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -61,6 +63,22 @@ class MyApp extends StatelessWidget {
         snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
       ),
       home: const LoginScreen(),
+      routes: {
+        '/drawing': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return DrawingScreen(
+            gameSessionId: args['gameSessionId'],
+            playerData: args['playerData'],
+          );
+        },
+        '/guessing_wait': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return GuessingWaitScreen(
+            gameSessionId: args['gameSessionId'],
+            playerData: args['playerData'],
+          );
+        },
+      },
       debugShowCheckedModeBanner: false,
     );
   }

@@ -65,7 +65,7 @@
           ]
         },
         {
-          "name": "Login (POST /login) → sets {{jwt}}",
+          "name": "Login (POST /login) → sets {{jwt}} ",
           "request": {
             "auth": { "type": "noauth" },
             "method": "POST",

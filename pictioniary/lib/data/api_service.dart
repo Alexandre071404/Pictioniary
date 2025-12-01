@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'global_data.dart';
-import 'dart:developer' as developer; // Ajout de l'importation manquante
+import 'dart:developer' as developer; 
 
 class ApiService {
   static String? _jwt;
@@ -261,6 +261,59 @@ class ApiService {
         return {'success': true, 'data': data};
       } else {
         return {'success': false, 'error': 'Erreur lors de la récupération des challenges'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMyChallengesToGuess(String gameSessionId) async {
+    try {
+      developer.log('GET /game_sessions/$gameSessionId/myChallengesToGuess', name: 'ApiService');
+      final response = await http.get(
+        Uri.parse('$baseUrl/game_sessions/$gameSessionId/myChallengesToGuess'),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        return {'success': false, 'error': 'Erreur lors de la récupération des challenges à deviner'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> submitDrawForChallenge({
+    required String gameSessionId,
+    required String challengeId,
+    required String prompt,
+  }) async {
+    try {
+      developer.log('POST /game_sessions/$gameSessionId/challenges/$challengeId/draw', name: 'ApiService');
+      final response = await http.post(
+        Uri.parse('$baseUrl/game_sessions/$gameSessionId/challenges/$challengeId/draw'),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'prompt': prompt}),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        Map<String, dynamic>? errorData;
+        try { errorData = jsonDecode(response.body); } catch (_) {}
+        return {'success': false, 'error': errorData?['error'] ?? 'Erreur lors de l\'envoi du dessin'};
       }
     } catch (e) {
       return {'success': false, 'error': 'Erreur de connexion: $e'};

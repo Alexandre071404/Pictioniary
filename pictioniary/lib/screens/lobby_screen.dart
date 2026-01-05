@@ -49,6 +49,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   void _logDebug(String message) {
     developer.log(message, name: 'LobbyScreen');
+    if (!mounted) return;
     setState(() {
       debugInfo = '$debugInfo\n$message';
     });
@@ -56,6 +57,10 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   void _startPolling() {
     _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) {
+        _timer?.cancel();
+        return;
+      }
       if (!isJoining) {
         _fetchSessionData(showLoading: false);
       }
@@ -64,6 +69,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
   Future<void> _fetchSessionData({bool showLoading = false}) async {
     if (showLoading) {
+      if (!mounted) return;
       setState(() => isLoading = true);
     }
 
@@ -75,6 +81,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
       
       final statusResult = await ApiService.getGameSessionStatus(widget.gameSessionId);
       _logDebug('Status Result: ${statusResult.toString()}');
+
+      if (!mounted) return;
 
       if (sessionResult['success'] && statusResult['success']) {
         final Map<String, dynamic>? newSessionDataRaw = (sessionResult['data'] is Map) ? (sessionResult['data'] as Map).cast<String, dynamic>() : null;
@@ -129,6 +137,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
         _logDebug('Player in session: $playerInSession');
 
+        if (!mounted) return;
         setState(() {
           sessionData = newSessionData;
           status = newStatus;
@@ -140,6 +149,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
         // Si le statut a changé vers challenge
         if (newStatus == 'challenge' && !_navigatedToPhase && mounted) {
+          _timer?.cancel();
           _navigatedToPhase = true;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(
@@ -157,6 +167,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
         _logDebug('ERREUR API');
         _showSnackBar('Erreur lors du chargement des données');
         if (showLoading) {
+          if (!mounted) return;
           setState(() => isLoading = false);
         }
       }
@@ -164,6 +175,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       _logDebug('EXCEPTION: $e');
       _showSnackBar('Erreur réseau : $e');
       if (showLoading) {
+        if (!mounted) return;
         setState(() => isLoading = false);
       }
     }
@@ -256,6 +268,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
   Future<void> _joinTeam(String color) async {
     if (isJoining) return;
     
+    if (!mounted) return;
     setState(() => isJoining = true);
     _logDebug('=== JOIN TEAM $color ===');
 
@@ -320,6 +333,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       _logDebug('Join exception: $e');
       _showSnackBar('Erreur réseau : $e');
     } finally {
+      if (!mounted) return;
       setState(() => isJoining = false);
     }
   }
@@ -330,6 +344,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() => isLoading = true);
     _logDebug('=== START GAME ===');
 
@@ -348,6 +363,7 @@ class _LobbyScreenState extends State<LobbyScreen> {
       _logDebug('Start exception: $e');
       _showSnackBar('Erreur réseau : $e');
     } finally {
+      if (!mounted) return;
       setState(() => isLoading = false);
     }
   }

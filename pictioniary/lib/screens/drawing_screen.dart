@@ -400,6 +400,16 @@ class _DrawingScreenState extends State<DrawingScreen> {
             'playerData': widget.playerData,
           },
         );
+      } else if (s == 'finished') {
+        _statusTimer?.cancel();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed(
+          '/results',
+          arguments: {
+            'gameSessionId': widget.gameSessionId,
+            'playerData': widget.playerData,
+          },
+        );
       }
     }
   }

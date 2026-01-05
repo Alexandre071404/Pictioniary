@@ -58,7 +58,7 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
 
   void _startStatusPolling() {
     _statusTimer?.cancel();
-    _statusTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+    _statusTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
       if (!mounted) {
         _statusTimer?.cancel();
         return;
@@ -68,21 +68,72 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
   }
 
   Future<void> _checkStatusAndMaybeNavigate() async {
+    developer.log('Vérification du statut et navigation...', name: 'GuessingWaitScreen');
     final statusRes = await ApiService.getGameSessionStatus(widget.gameSessionId);
     if (statusRes['success'] == true) {
       final s = statusRes['data']['status'];
+      developer.log('Statut actuel: $s, allChallengesDone: $_allChallengesDone', name: 'GuessingWaitScreen');
       if (s == 'finished') {
+        developer.log('Statut finished détecté, navigation vers les résultats', name: 'GuessingWaitScreen');
         _statusTimer?.cancel();
         _refreshTimer?.cancel();
         if (!mounted) return;
-        // TODO: Naviguer vers un écran de résultats ou afficher les résultats
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Partie terminée !'),
-            backgroundColor: Colors.green[600],
-            duration: const Duration(seconds: 5),
-          ),
+        Navigator.of(context).pushReplacementNamed(
+          '/results',
+          arguments: {
+            'gameSessionId': widget.gameSessionId,
+            'playerData': widget.playerData,
+          },
         );
+        return;
+      }
+    }
+    
+    // Vérifier aussi si tous les challenges sont résolus (même si le statut n'est pas encore "finished")
+    if (_allChallengesDone) {
+      developer.log('Tous les challenges locaux sont terminés, vérification de tous les challenges...', name: 'GuessingWaitScreen');
+      final challengesRes = await ApiService.getAllSessionChallenges(widget.gameSessionId);
+      if (challengesRes['success'] == true) {
+        final data = challengesRes['data'];
+        List<dynamic> allChallenges = [];
+        if (data is List) {
+          allChallenges = data;
+        } else if (data is Map && data['items'] is List) {
+          allChallenges = data['items'] as List;
+        }
+        
+        developer.log('Nombre total de challenges: ${allChallenges.length}', name: 'GuessingWaitScreen');
+        
+        // Vérifier si tous les challenges sont résolus
+        bool allResolved = true;
+        int resolvedCount = 0;
+        for (final challenge in allChallenges) {
+          if (challenge is Map) {
+            final isResolved = challenge['is_resolved'] == true;
+            if (isResolved) resolvedCount++;
+            if (!isResolved) {
+              allResolved = false;
+            }
+          }
+        }
+        
+        developer.log('Challenges résolus: $resolvedCount/${allChallenges.length}, allResolved: $allResolved', name: 'GuessingWaitScreen');
+        
+        if (allResolved && allChallenges.isNotEmpty) {
+          developer.log('Tous les challenges sont résolus, navigation vers les résultats', name: 'GuessingWaitScreen');
+          _statusTimer?.cancel();
+          _refreshTimer?.cancel();
+          if (!mounted) return;
+          Navigator.of(context).pushReplacementNamed(
+            '/results',
+            arguments: {
+              'gameSessionId': widget.gameSessionId,
+              'playerData': widget.playerData,
+            },
+          );
+        }
+      } else {
+        developer.log('Erreur lors de la récupération de tous les challenges: ${challengesRes['error']}', name: 'GuessingWaitScreen');
       }
     }
   }
@@ -167,14 +218,24 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
       }
       
       final selectedId = first != null ? (first['id'] ?? first['_id'] ?? first['challengeId']) : null;
-      developer.log('Challenge sélectionné: $selectedId, allChallengesDone: ${first == null || list.isEmpty}', name: 'GuessingWaitScreen');
+      final allDone = (first == null || list.isEmpty);
+      developer.log('Challenge sélectionné: $selectedId, allChallengesDone: $allDone', name: 'GuessingWaitScreen');
       
       if (mounted) {
         setState(() {
           _currentChallenge = first;
-          _allChallengesDone = (first == null || list.isEmpty);
+          _allChallengesDone = allDone;
           _loading = false;
         });
+        
+        // Si tous les challenges sont terminés, vérifier immédiatement si on peut naviguer
+        if (allDone) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _checkStatusAndMaybeNavigate();
+            }
+          });
+        }
       }
     } else {
       developer.log('Erreur lors du chargement: ${res['error']}', name: 'GuessingWaitScreen');

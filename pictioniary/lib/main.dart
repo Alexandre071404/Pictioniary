@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/drawing_screen.dart';
 import 'screens/guessing_wait_screen.dart';
+import 'screens/results_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -74,6 +75,13 @@ class MyApp extends StatelessWidget {
         '/guessing_wait': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return GuessingWaitScreen(
+            gameSessionId: args['gameSessionId'],
+            playerData: args['playerData'],
+          );
+        },
+        '/results': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return ResultsScreen(
             gameSessionId: args['gameSessionId'],
             playerData: args['playerData'],
           );

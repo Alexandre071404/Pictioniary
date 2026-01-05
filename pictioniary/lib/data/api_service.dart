@@ -353,4 +353,29 @@ class ApiService {
       return {'success': false, 'error': 'Erreur de connexion: $e'};
     }
   }
+
+  static Future<Map<String, dynamic>> getAllSessionChallenges(String gameSessionId) async {
+    try {
+      developer.log('GET /game_sessions/$gameSessionId/challenges', name: 'ApiService');
+      final response = await http.get(
+        Uri.parse('$baseUrl/game_sessions/$gameSessionId/challenges'),
+        headers: {
+          'Authorization': 'Bearer $_jwt',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {'success': true, 'data': data};
+      } else {
+        Map<String, dynamic>? errorData;
+        try { errorData = jsonDecode(response.body); } catch (_) {}
+        return {'success': false, 'error': errorData?['error'] ?? 'Erreur lors de la récupération des challenges'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erreur de connexion: $e'};
+    }
+  }
 }

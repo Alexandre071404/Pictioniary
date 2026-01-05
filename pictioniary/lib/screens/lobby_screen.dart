@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../data/api_service.dart';
 import 'challenge_submission_screen.dart';
 
@@ -341,6 +342,54 @@ class _LobbyScreenState extends State<LobbyScreen> {
     );
   }
 
+  void _showQRCodeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('QR Code de la partie'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Partagez ce QR code pour que d\'autres joueurs rejoignent la partie',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: QrImageView(
+                data: widget.gameSessionId,
+                version: QrVersions.auto,
+                size: 250.0,
+                backgroundColor: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'ID: ${widget.gameSessionId}',
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   List<dynamic> _getPlayersByColor(String color) {
     final players = sessionData?['players'] as List? ?? [];
 
@@ -505,6 +554,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () => _fetchSessionData(showLoading: false),
             tooltip: 'Rafraîchir',
+          ),
+          IconButton(
+            icon: const Icon(Icons.qr_code),
+            onPressed: () => _showQRCodeDialog(),
+            tooltip: 'Afficher le QR Code',
           ),
         ],
       ),

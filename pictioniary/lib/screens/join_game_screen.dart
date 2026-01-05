@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/api_service.dart';
 import 'lobby_screen.dart';
+import 'scan_qr_screen.dart';
 
 class JoinGameScreen extends StatefulWidget {
   final Map<String, dynamic> playerData;
@@ -226,6 +227,20 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     );
   }
 
+  Future<void> _scanQRCode() async {
+    final scannedCode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (context) => const ScanQRScreen(),
+      ),
+    );
+
+    if (scannedCode != null && scannedCode.isNotEmpty) {
+      _idController.text = scannedCode;
+      // Optionnel: prévisualiser automatiquement après le scan
+      await _previewSession();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -272,6 +287,18 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                         : const Icon(Icons.visibility),
                     label: const Text('Prévisualiser la session'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading || _isFetching ? null : _scanQRCode,
+                    icon: const Icon(Icons.qr_code_scanner),
+                    label: const Text('Scanner un QR Code'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF667EEA),
+                    ),
                   ),
                 ),
                 if (_sessionData != null) ...[

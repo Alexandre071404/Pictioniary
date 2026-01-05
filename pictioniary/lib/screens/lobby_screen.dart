@@ -345,47 +345,69 @@ class _LobbyScreenState extends State<LobbyScreen> {
   void _showQRCodeDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('QR Code de la partie'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Partagez ce QR code pour que d\'autres joueurs rejoignent la partie',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+      builder: (context) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'QR Code de la partie',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              child: QrImageView(
-                data: widget.gameSessionId,
-                version: QrVersions.auto,
-                size: 250.0,
-                backgroundColor: Colors.white,
+              const SizedBox(height: 12),
+              const Text(
+                'Partagez ce QR code pour que d\'autres joueurs rejoignent la partie',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'ID: ${widget.gameSessionId}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontFamily: 'monospace',
+              const SizedBox(height: 20),
+              Builder(
+                builder: (context) {
+                  final qrData = widget.gameSessionId;
+                  if (qrData.isEmpty) {
+                    return const Text('ID de session invalide');
+                  }
+                  return Container(
+                    width: 250,
+                    height: 250,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                    ),
+                    child: QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 218.0,
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      errorCorrectionLevel: QrErrorCorrectLevel.M,
+                    ),
+                  );
+                },
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Fermer'),
+              const SizedBox(height: 16),
+              Text(
+                'ID: ${widget.gameSessionId}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Fermer'),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

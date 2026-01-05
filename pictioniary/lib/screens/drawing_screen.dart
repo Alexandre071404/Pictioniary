@@ -55,6 +55,7 @@ class _DrawingScreenState extends State<DrawingScreen> {
           final hasImage = (m['image_path'] ?? m['imageUrl']) != null &&
               (m['image_path'] ?? m['imageUrl']).toString().isNotEmpty;
           final hasPrev = _extractPreviousImages(m).isNotEmpty;
+          // Ne sélectionner que les challenges qui n'ont ni image ni previous_images
           if (!hasImage && !hasPrev) {
             selected = m;
             break;
@@ -71,9 +72,11 @@ class _DrawingScreenState extends State<DrawingScreen> {
         _previousImages = prevImages;
         _currentImageUrl = imgUrl;
         _regenerationsUsed = _calculateRegenerationsUsed(prevImages);
+        _loading = false;
       });
+    } else {
+      setState(() => _loading = false);
     }
-    setState(() => _loading = false);
   }
 
   Future<void> _submitPrompt() async {
@@ -130,19 +133,46 @@ class _DrawingScreenState extends State<DrawingScreen> {
       return;
     }
     setState(() => _loading = true);
+    
+    // Sauvegarder l'ID du challenge qu'on vient de valider
+    final validatedChallengeId = (_currentChallenge!['id'] ?? _currentChallenge!['_id'] ?? _currentChallenge!['challengeId']).toString();
+    
+    // Recharger les challenges
     await _loadMyChallenges();
+    
     if (!mounted) return;
-    // Passage au prochain challenge (ou écran vide s'il n'y en a plus) :
-    // on réinitialise systématiquement l'état de génération local.
-    setState(() {
-      _currentImageUrl = null;
-      _previousImages = [];
-      _regenerationsUsed = 0;
-    });
+    
+    // Si le challenge sélectionné est le même que celui qu'on vient de valider,
+    // c'est qu'il n'y a plus de nouveau challenge disponible
+    final currentChallengeId = _currentChallenge != null 
+        ? (_currentChallenge!['id'] ?? _currentChallenge!['_id'] ?? _currentChallenge!['challengeId']).toString()
+        : null;
+    
+    if (currentChallengeId == validatedChallengeId || _currentChallenge == null) {
+      // Tous les challenges sont terminés, on force à null pour afficher l'écran d'attente
+      setState(() {
+        _currentChallenge = null;
+        _currentImageUrl = null;
+        _previousImages = [];
+        _regenerationsUsed = 0;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Tous vos dessins sont terminés ! En attente des autres joueurs...'), backgroundColor: Colors.green[600]),
+      );
+    } else {
+      // Il reste des challenges, on réinitialise l'état de génération
+      setState(() {
+        _currentImageUrl = null;
+        _previousImages = [];
+        _regenerationsUsed = 0;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: const Text('Génération validée, prochain challenge !'), backgroundColor: Colors.green[600]),
+      );
+    }
     _promptCtrl.clear();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: const Text('Génération validée, prochain challenge !'), backgroundColor: Colors.green[600]),
-    );
   }
 
   @override
@@ -166,15 +196,35 @@ class _DrawingScreenState extends State<DrawingScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator(color: Colors.white))
             : (_currentChallenge == null
-                ? const Center(
-                    child: Text('Aucun challenge à dessiner pour le moment', style: TextStyle(color: Colors.white70)),
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Tous vos dessins sont terminés !',
+                            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'En attente des autres joueurs…',
+                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 : Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                         Card(
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
@@ -277,23 +327,23 @@ class _DrawingScreenState extends State<DrawingScreen> {
                             ),
                           ),
                         ),
-                          const SizedBox(height: 16),
-                          TextFormField(
-                            controller: _promptCtrl,
-                            maxLines: 4,
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _promptCtrl,
+                          maxLines: 4,
                           decoration: const InputDecoration(
                             labelText: 'Prompt (sans les mots du challenge ni les interdits)',
                             hintText: 'Décrivez l\'image à générer…',
                           ),
-                          ),
-                          const SizedBox(height: 12),
+                        ),
+                        const SizedBox(height: 12),
                           Row(
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: (_submitting || _isRegenerationLimitReached) ? null : _submitPrompt,
-                                  icon: _submitting
-                                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          icon: _submitting
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                       : Icon(_currentImageUrl == null ? Icons.image : Icons.refresh),
                                   label: Text(_currentImageUrl == null
                                       ? 'Générer'

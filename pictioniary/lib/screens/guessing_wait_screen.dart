@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'dart:developer' as developer;
 import '../data/api_service.dart';
 import '../data/global_data.dart';
 
@@ -68,13 +67,10 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
   }
 
   Future<void> _checkStatusAndMaybeNavigate() async {
-    developer.log('Vérification du statut et navigation...', name: 'GuessingWaitScreen');
     final statusRes = await ApiService.getGameSessionStatus(widget.gameSessionId);
     if (statusRes['success'] == true) {
       final s = statusRes['data']['status'];
-      developer.log('Statut actuel: $s, allChallengesDone: $_allChallengesDone', name: 'GuessingWaitScreen');
       if (s == 'finished') {
-        developer.log('Statut finished détecté, navigation vers les résultats', name: 'GuessingWaitScreen');
         _statusTimer?.cancel();
         _refreshTimer?.cancel();
         if (!mounted) return;
@@ -91,7 +87,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
     
     // Vérifier aussi si tous les challenges sont résolus (même si le statut n'est pas encore "finished")
     if (_allChallengesDone) {
-      developer.log('Tous les challenges locaux sont terminés, vérification de tous les challenges...', name: 'GuessingWaitScreen');
       final challengesRes = await ApiService.getAllSessionChallenges(widget.gameSessionId);
       if (challengesRes['success'] == true) {
         final data = challengesRes['data'];
@@ -102,25 +97,19 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
           allChallenges = data['items'] as List;
         }
         
-        developer.log('Nombre total de challenges: ${allChallenges.length}', name: 'GuessingWaitScreen');
-        
         // Vérifier si tous les challenges sont résolus
         bool allResolved = true;
-        int resolvedCount = 0;
         for (final challenge in allChallenges) {
           if (challenge is Map) {
             final isResolved = challenge['is_resolved'] == true;
-            if (isResolved) resolvedCount++;
             if (!isResolved) {
               allResolved = false;
+              break;
             }
           }
         }
         
-        developer.log('Challenges résolus: $resolvedCount/${allChallenges.length}, allResolved: $allResolved', name: 'GuessingWaitScreen');
-        
         if (allResolved && allChallenges.isNotEmpty) {
-          developer.log('Tous les challenges sont résolus, navigation vers les résultats', name: 'GuessingWaitScreen');
           _statusTimer?.cancel();
           _refreshTimer?.cancel();
           if (!mounted) return;
@@ -132,8 +121,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
             },
           );
         }
-      } else {
-        developer.log('Erreur lors de la récupération de tous les challenges: ${challengesRes['error']}', name: 'GuessingWaitScreen');
       }
     }
   }
@@ -150,8 +137,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
       } else if (data is Map && data['items'] is List) {
         list = data['items'] as List;
       }
-      
-      developer.log('Challenges reçus: ${list.length}, exclusion: $excludeChallengeId, answeredIds: $_answeredChallengeIds', name: 'GuessingWaitScreen');
       
       // Si on veut préserver le challenge actuel et qu'il est toujours valide, on le garde
       if (preserveCurrent && _currentChallenge != null) {
@@ -173,7 +158,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
         }
         
         if (currentStillValid) {
-          developer.log('Challenge actuel $currentId toujours valide, on le garde', name: 'GuessingWaitScreen');
           if (mounted) {
             setState(() {
               _loading = false;
@@ -192,11 +176,9 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
           
           // Exclure les challenges résolus, répondu, ou explicitement exclus
           if (challengeId == excludeChallengeId || isResolved || _answeredChallengeIds.contains(challengeId)) {
-            developer.log('Challenge $challengeId exclu (répondu: ${_answeredChallengeIds.contains(challengeId)}, résolu: $isResolved, explicit: ${challengeId == excludeChallengeId})', name: 'GuessingWaitScreen');
             continue;
           }
           
-          developer.log('Challenge $challengeId sélectionné', name: 'GuessingWaitScreen');
           first = m;
           break;
         }
@@ -210,7 +192,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
             final challengeId = (m['id'] ?? m['_id'] ?? m['challengeId'])?.toString();
             if (challengeId != excludeChallengeId && !_answeredChallengeIds.contains(challengeId)) {
               first = m;
-              developer.log('Aucun challenge non résolu trouvé, utilisation du premier non exclu: $challengeId', name: 'GuessingWaitScreen');
               break;
             }
           }
@@ -219,7 +200,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
       
       final selectedId = first != null ? (first['id'] ?? first['_id'] ?? first['challengeId']) : null;
       final allDone = (first == null || list.isEmpty);
-      developer.log('Challenge sélectionné: $selectedId, allChallengesDone: $allDone', name: 'GuessingWaitScreen');
       
       if (mounted) {
         setState(() {
@@ -238,7 +218,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
         }
       }
     } else {
-      developer.log('Erreur lors du chargement: ${res['error']}', name: 'GuessingWaitScreen');
       if (mounted) {
         setState(() {
           _loading = false;
@@ -271,8 +250,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
     final cid = (_currentChallenge!['id'] ?? _currentChallenge!['_id'] ?? _currentChallenge!['challengeId']).toString();
     final answer = _answerCtrl.text.trim();
     
-    developer.log('Envoi réponse pour challenge $cid: "$answer"', name: 'GuessingWaitScreen');
-    
     // Pour l'instant, on envoie is_resolved à false car on ne sait pas si c'est la bonne réponse
     // Le backend devrait vérifier et retourner si c'est résolu ou non
     final res = await ApiService.answerChallenge(
@@ -287,8 +264,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
     if (res['success'] == true) {
       final responseData = res['data'];
       final isResolved = responseData['is_resolved'] ?? false;
-      
-      developer.log('Réponse acceptée - is_resolved: $isResolved', name: 'GuessingWaitScreen');
       
       if (!mounted) return;
       
@@ -306,13 +281,10 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
       
       // Ajouter le challenge à la liste des challenges auxquels on a répondu
       _answeredChallengeIds.add(cid);
-      developer.log('Challenge $cid ajouté à la liste des réponses, total: ${_answeredChallengeIds.length}', name: 'GuessingWaitScreen');
       
       // Recharger la liste en excluant le challenge auquel on vient de répondre
-      developer.log('Rechargement des challenges après réponse (exclusion: $cid)...', name: 'GuessingWaitScreen');
       await _loadChallengesToGuess(excludeChallengeId: cid);
     } else {
-      developer.log('Erreur lors de l\'envoi: ${res['error']}', name: 'GuessingWaitScreen');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(res['error'] ?? 'Erreur lors de l\'envoi'), backgroundColor: Colors.red[600]),
@@ -387,10 +359,6 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text('Image à deviner', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                    Text(
-                                      'ID: ${(_currentChallenge!['id'] ?? _currentChallenge!['_id'] ?? _currentChallenge!['challengeId'] ?? 'N/A').toString()}',
-                                      style: const TextStyle(color: Colors.white54, fontSize: 12, fontFamily: 'monospace'),
-                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 12),

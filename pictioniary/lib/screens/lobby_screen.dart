@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import '../data/api_service.dart';
 import 'challenge_submission_screen.dart';
@@ -27,16 +26,11 @@ class _LobbyScreenState extends State<LobbyScreen> {
   bool hasJoined = false;
   bool isJoining = false;
   Timer? _timer;
-  String debugInfo = '';
   bool _navigatedToPhase = false;
 
   @override
   void initState() {
     super.initState();
-    _logDebug('=== INIT ===');
-    _logDebug('Player ID: ${widget.playerData['id'] ?? widget.playerData['_id']}');
-    _logDebug('Player Name: ${widget.playerData['name']}');
-    _logDebug('Session ID: ${widget.gameSessionId}');
     _fetchSessionData(showLoading: true);
     _startPolling();
   }
@@ -45,14 +39,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
-  }
-
-  void _logDebug(String message) {
-    developer.log(message, name: 'LobbyScreen');
-    if (!mounted) return;
-    setState(() {
-      debugInfo = '$debugInfo\n$message';
-    });
   }
 
   void _startPolling() {
@@ -74,13 +60,8 @@ class _LobbyScreenState extends State<LobbyScreen> {
     }
 
     try {
-      _logDebug('=== FETCH SESSION DATA ===');
-      
       final sessionResult = await ApiService.getGameSession(widget.gameSessionId);
-      _logDebug('Session Result: ${sessionResult.toString()}');
-      
       final statusResult = await ApiService.getGameSessionStatus(widget.gameSessionId);
-      _logDebug('Status Result: ${statusResult.toString()}');
 
       if (!mounted) return;
 
@@ -114,28 +95,18 @@ class _LobbyScreenState extends State<LobbyScreen> {
           newSessionData['players'] = previous['players'];
         }
         
-        _logDebug('New Status: $newStatus');
-        _logDebug('Session Data Keys: ${newSessionData.keys.toList()}');
-        
         // Récupération des équipes
         final blueTeam = newSessionData['blue_team'] as List? ?? [];
         final redTeam = newSessionData['red_team'] as List? ?? [];
         
-        _logDebug('Blue Team: $blueTeam');
-        _logDebug('Red Team: $redTeam');
-        
         // Vérifie si le joueur courant a déjà rejoint
         final currentPlayerId = widget.playerData['id'] ?? widget.playerData['_id'];
-        _logDebug('Current Player ID recherché: $currentPlayerId');
         
         bool playerInSession = _isPlayerInProvidedData(newSessionData, currentPlayerId);
         // Si la nouvelle data ne le confirme pas mais que l'état local le disait, garder true pour éviter l'effet yo-yo
         if (!playerInSession && hasJoined) {
-          _logDebug('API n\'a pas confirmé, conservation de hasJoined=true par prudence');
           playerInSession = true;
         }
-
-        _logDebug('Player in session: $playerInSession');
 
         if (!mounted) return;
         setState(() {
@@ -164,7 +135,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
           _showSnackBar('La partie a démarré ! Statut: $newStatus', isSuccess: true);
         }
       } else {
-        _logDebug('ERREUR API');
         _showSnackBar('Erreur lors du chargement des données');
         if (showLoading) {
           if (!mounted) return;
@@ -172,7 +142,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
         }
       }
     } catch (e) {
-      _logDebug('EXCEPTION: $e');
       _showSnackBar('Erreur réseau : $e');
       if (showLoading) {
         if (!mounted) return;
@@ -270,11 +239,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
     
     if (!mounted) return;
     setState(() => isJoining = true);
-    _logDebug('=== JOIN TEAM $color ===');
 
     try {
       final result = await ApiService.joinGameSession(widget.gameSessionId, color);
-      _logDebug('Join Result: ${result.toString()}');
 
       if (result['success']) {
         _showSnackBar('Équipe $color rejointe avec succès !', isSuccess: true);
@@ -326,11 +293,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
         await _fetchSessionData(showLoading: false);
         
       } else {
-        _logDebug('Join failed: ${result['error']}');
         _showSnackBar(result['error'] ?? 'Erreur lors de la jointure de l\'équipe');
       }
     } catch (e) {
-      _logDebug('Join exception: $e');
       _showSnackBar('Erreur réseau : $e');
     } finally {
       if (!mounted) return;
@@ -346,11 +311,9 @@ class _LobbyScreenState extends State<LobbyScreen> {
 
     if (!mounted) return;
     setState(() => isLoading = true);
-    _logDebug('=== START GAME ===');
 
     try {
       final result = await ApiService.startGameSession(widget.gameSessionId);
-      _logDebug('Start Result: ${result.toString()}');
       
       if (result['success']) {
         _showSnackBar('Partie démarrée !', isSuccess: true);
@@ -360,7 +323,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
         _showSnackBar(result['error'] ?? 'Erreur lors du démarrage de la partie');
       }
     } catch (e) {
-      _logDebug('Start exception: $e');
       _showSnackBar('Erreur réseau : $e');
     } finally {
       if (!mounted) return;
@@ -505,10 +467,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  subtitle: Text(
-                    'ID: ${player['id'] ?? player['_id'] ?? 'N/A'} | Color: ${player['color']}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
                 ),
               )),
       ],
@@ -547,27 +505,6 @@ class _LobbyScreenState extends State<LobbyScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () => _fetchSessionData(showLoading: false),
             tooltip: 'Rafraîchir',
-          ),
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Debug Info'),
-                  content: SingleChildScrollView(
-                    child: Text(debugInfo),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Fermer'),
-                    ),
-                  ],
-                ),
-              );
-            },
-            tooltip: 'Debug',
           ),
         ],
       ),

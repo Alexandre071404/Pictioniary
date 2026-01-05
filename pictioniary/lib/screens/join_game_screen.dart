@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:developer' as developer; // Ajout pour log
 import '../data/api_service.dart';
 import 'lobby_screen.dart';
 
@@ -51,8 +50,6 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     }
 
     Map<String, dynamic> result = await ApiService.joinGameSession(gameSessionId, color);
-    
-    developer.log('Join result: $result', name: 'JoinGameScreen');
 
     if (result['success']) {
       await Future.delayed(const Duration(seconds: 2));
@@ -69,7 +66,6 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
       final errorMsg = (result['error'] ?? '').toString().toLowerCase();
       if (errorMsg.contains('already in game session') || errorMsg.contains('already in game sessions')) {
         // Tenter de quitter puis de rejoindre
-        developer.log('Detected already in session, trying leave then re-join', name: 'JoinGameScreen');
         final leave = await ApiService.leaveGameSession(gameSessionId);
         await Future.delayed(const Duration(milliseconds: 800));
         if (leave['success'] == true) {
@@ -127,8 +123,6 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
     try {
       final session = await ApiService.getGameSession(id);
       final status = await ApiService.getGameSessionStatus(id);
-      developer.log('Preview session: ${session.toString()}', name: 'JoinGameScreen');
-      developer.log('Preview status: ${status.toString()}', name: 'JoinGameScreen');
       if (session['success']) {
         setState(() {
           _sessionData = Map<String, dynamic>.from(session['data'] as Map);

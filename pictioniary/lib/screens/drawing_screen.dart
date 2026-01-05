@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../data/api_service.dart';
@@ -26,11 +27,13 @@ class _DrawingScreenState extends State<DrawingScreen> {
   int _regenerationsUsed = 0;
   List<String> _previousImages = [];
   String? _currentImageUrl;
+  Timer? _statusTimer;
 
   @override
   void initState() {
     super.initState();
     _loadMyChallenges();
+    _startStatusPolling();
   }
 
   Future<void> _loadMyChallenges() async {
@@ -58,10 +61,8 @@ class _DrawingScreenState extends State<DrawingScreen> {
           }
         }
       }
-      // Fallback: si tous ont déjà une image, prendre le premier ou rien
-      selected ??= (list.isNotEmpty && list.first is Map)
-          ? Map<String, dynamic>.from(list.first as Map)
-          : null;
+      // S'il n'y a plus de challenge sans image, on ne sélectionne rien :
+      // le joueur n'a plus rien à dessiner et attend que la phase passe à "guessing".
 
       final List<String> prevImages = selected != null ? _extractPreviousImages(selected) : [];
       final String? imgUrl = selected != null ? _resolveImageUrl(selected['image_path'] ?? selected['imageUrl']) : null;
@@ -321,6 +322,38 @@ class _DrawingScreenState extends State<DrawingScreen> {
     );
   }
 
+  void _startStatusPolling() {
+    _statusTimer?.cancel();
+    _statusTimer = Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) {
+        _statusTimer?.cancel();
+        return;
+      }
+      await _checkStatusAndMaybeNavigate();
+    });
+  }
+
+  Future<void> _checkStatusAndMaybeNavigate() async {
+    // Tant qu'il reste un challenge courant à dessiner, on reste sur cet écran.
+    if (_currentChallenge != null) return;
+
+    final statusRes = await ApiService.getGameSessionStatus(widget.gameSessionId);
+    if (statusRes['success'] == true) {
+      final s = statusRes['data']['status'];
+      if (s == 'guessing') {
+        _statusTimer?.cancel();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed(
+          '/guessing_wait',
+          arguments: {
+            'gameSessionId': widget.gameSessionId,
+            'playerData': widget.playerData,
+          },
+        );
+      }
+    }
+  }
+
   String _formatChallengeSentence(Map<String, dynamic> challenge) {
     final fw = _readWord(challenge, 'first');
     final sw = _readWord(challenge, 'second');
@@ -409,6 +442,13 @@ class _DrawingScreenState extends State<DrawingScreen> {
     final sanitizedBase = baseUrl.replaceFirst(RegExp(r'/api/?$'), '');
     final normalizedPath = path.startsWith('/') ? path : '/$path';
     return '$sanitizedBase$normalizedPath';
+  }
+
+  @override
+  void dispose() {
+    _statusTimer?.cancel();
+    _promptCtrl.dispose();
+    super.dispose();
   }
 }
 

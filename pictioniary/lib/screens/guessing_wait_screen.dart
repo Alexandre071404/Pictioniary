@@ -26,6 +26,7 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
   Timer? _refreshTimer;
   Timer? _statusTimer;
   bool _allChallengesDone = false;
+  final Set<String> _answeredChallengeIds = {};
 
   @override
   void initState() {
@@ -50,7 +51,8 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
         _refreshTimer?.cancel();
         return;
       }
-      await _loadChallengesToGuess();
+      // Préserver le challenge actuel s'il est toujours valide
+      await _loadChallengesToGuess(preserveCurrent: true);
     });
   }
 
@@ -85,7 +87,7 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
     }
   }
 
-  Future<void> _loadChallengesToGuess() async {
+  Future<void> _loadChallengesToGuess({String? excludeChallengeId, bool preserveCurrent = false}) async {
     final res = await ApiService.getMyChallengesToGuess(widget.gameSessionId);
     if (res['success'] == true) {
       final data = res['data'];
@@ -98,26 +100,70 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
         list = data['items'] as List;
       }
       
-      developer.log('Challenges reçus: ${list.length}', name: 'GuessingWaitScreen');
+      developer.log('Challenges reçus: ${list.length}, exclusion: $excludeChallengeId, answeredIds: $_answeredChallengeIds', name: 'GuessingWaitScreen');
       
-      // Sélectionner le premier challenge non résolu
-      for (final raw in list) {
-        if (raw is Map) {
-          final m = Map<String, dynamic>.from(raw as Map);
-          final challengeId = m['id'] ?? m['_id'] ?? m['challengeId'];
-          final isResolved = m['is_resolved'] == true;
-          developer.log('Challenge $challengeId - is_resolved: $isResolved', name: 'GuessingWaitScreen');
-          if (!isResolved) {
-            first = m;
-            break;
+      // Si on veut préserver le challenge actuel et qu'il est toujours valide, on le garde
+      if (preserveCurrent && _currentChallenge != null) {
+        final currentId = (_currentChallenge!['id'] ?? _currentChallenge!['_id'] ?? _currentChallenge!['challengeId'])?.toString();
+        final isCurrentResolved = _currentChallenge!['is_resolved'] == true;
+        final isCurrentAnswered = _answeredChallengeIds.contains(currentId);
+        
+        // Vérifier si le challenge actuel est toujours dans la liste et toujours valide
+        bool currentStillValid = false;
+        for (final raw in list) {
+          if (raw is Map) {
+            final m = Map<String, dynamic>.from(raw as Map);
+            final challengeId = (m['id'] ?? m['_id'] ?? m['challengeId'])?.toString();
+            if (challengeId == currentId && !isCurrentResolved && !isCurrentAnswered) {
+              currentStillValid = true;
+              break;
+            }
           }
+        }
+        
+        if (currentStillValid) {
+          developer.log('Challenge actuel $currentId toujours valide, on le garde', name: 'GuessingWaitScreen');
+          if (mounted) {
+            setState(() {
+              _loading = false;
+            });
+          }
+          return;
         }
       }
       
-      // Si aucun challenge non résolu, prendre le premier de la liste (fallback)
-      if (first == null && list.isNotEmpty && list.first is Map) {
-        first = Map<String, dynamic>.from(list.first as Map);
-        developer.log('Aucun challenge non résolu trouvé, utilisation du premier', name: 'GuessingWaitScreen');
+      // Sélectionner le premier challenge non résolu ET non répondu
+      for (final raw in list) {
+        if (raw is Map) {
+          final m = Map<String, dynamic>.from(raw as Map);
+          final challengeId = (m['id'] ?? m['_id'] ?? m['challengeId'])?.toString();
+          final isResolved = m['is_resolved'] == true;
+          
+          // Exclure les challenges résolus, répondu, ou explicitement exclus
+          if (challengeId == excludeChallengeId || isResolved || _answeredChallengeIds.contains(challengeId)) {
+            developer.log('Challenge $challengeId exclu (répondu: ${_answeredChallengeIds.contains(challengeId)}, résolu: $isResolved, explicit: ${challengeId == excludeChallengeId})', name: 'GuessingWaitScreen');
+            continue;
+          }
+          
+          developer.log('Challenge $challengeId sélectionné', name: 'GuessingWaitScreen');
+          first = m;
+          break;
+        }
+      }
+      
+      // Si aucun challenge non résolu, vérifier s'il reste des challenges non exclus
+      if (first == null) {
+        for (final raw in list) {
+          if (raw is Map) {
+            final m = Map<String, dynamic>.from(raw as Map);
+            final challengeId = (m['id'] ?? m['_id'] ?? m['challengeId'])?.toString();
+            if (challengeId != excludeChallengeId && !_answeredChallengeIds.contains(challengeId)) {
+              first = m;
+              developer.log('Aucun challenge non résolu trouvé, utilisation du premier non exclu: $challengeId', name: 'GuessingWaitScreen');
+              break;
+            }
+          }
+        }
       }
       
       final selectedId = first != null ? (first['id'] ?? first['_id'] ?? first['challengeId']) : null;
@@ -191,14 +237,19 @@ class _GuessingWaitScreenState extends State<GuessingWaitScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: const Text('Réponse envoyée, continuez...'), backgroundColor: Colors.blue[600]),
+          SnackBar(content: const Text('Réponse envoyée'), backgroundColor: Colors.blue[600]),
         );
       }
       
       _answerCtrl.clear();
-      // Recharger la liste pour récupérer éventuellement un autre challenge à deviner
-      developer.log('Rechargement des challenges après réponse...', name: 'GuessingWaitScreen');
-      await _loadChallengesToGuess();
+      
+      // Ajouter le challenge à la liste des challenges auxquels on a répondu
+      _answeredChallengeIds.add(cid);
+      developer.log('Challenge $cid ajouté à la liste des réponses, total: ${_answeredChallengeIds.length}', name: 'GuessingWaitScreen');
+      
+      // Recharger la liste en excluant le challenge auquel on vient de répondre
+      developer.log('Rechargement des challenges après réponse (exclusion: $cid)...', name: 'GuessingWaitScreen');
+      await _loadChallengesToGuess(excludeChallengeId: cid);
     } else {
       developer.log('Erreur lors de l\'envoi: ${res['error']}', name: 'GuessingWaitScreen');
       if (!mounted) return;

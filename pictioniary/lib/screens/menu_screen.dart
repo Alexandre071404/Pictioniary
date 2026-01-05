@@ -4,6 +4,7 @@ import '../widgets/menu_button.dart';
 import 'login_screen.dart';
 import 'lobby_screen.dart'; // Ajout de l'import
 import 'join_game_screen.dart'; // Ajout de l'import
+import 'docs_screen.dart';
 
 class MenuScreen extends StatelessWidget {
   final Map<String, dynamic> playerData;
@@ -96,6 +97,22 @@ class MenuScreen extends StatelessWidget {
                 ),
 
                 const Spacer(),
+
+                MenuButton(
+                  icon: Icons.description,
+                  title: "Documentation",
+                  subtitle: "Documentation technique",
+                  color: const Color(0xFF8B5CF6),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const DocsScreen(),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 20),
 
                 TextButton.icon(
                   onPressed: () {

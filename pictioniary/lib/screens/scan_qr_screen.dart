@@ -14,19 +14,13 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
   QRViewController? controller;
   bool isScanCompleted = false;
 
-  // ----------------------------------------------------------------------
-  // INDISPENSABLE AVEC CE PACKAGE
-  // Gère le redémarrage de la caméra lors du Hot Reload ou changement d'app
-  // ----------------------------------------------------------------------
+
   @override
   void reassemble() {
     super.reassemble();
-    // Ne pas utiliser Platform sur le web
     if (kIsWeb) {
-      // Sur le web, on ne fait rien car le scanner QR ne fonctionne pas de la même manière
       return;
     }
-    // Pour mobile, utiliser une approche conditionnelle
     try {
       // Vérifier la plateforme de manière sécurisée
       if (defaultTargetPlatform == TargetPlatform.android) {

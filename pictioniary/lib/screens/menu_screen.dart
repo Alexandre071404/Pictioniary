@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../data/api_service.dart';
 import '../widgets/menu_button.dart';
 import 'login_screen.dart';
-import 'lobby_screen.dart'; // Ajout de l'import
-import 'join_game_screen.dart'; // Ajout de l'import
+import 'lobby_screen.dart';
+import 'join_game_screen.dart'; 
 import 'docs_screen.dart';
 
 class MenuScreen extends StatelessWidget {

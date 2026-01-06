@@ -228,16 +228,55 @@ class _JoinGameScreenState extends State<JoinGameScreen> {
   }
 
   Future<void> _scanQRCode() async {
+    print('Ouverture du scanner QR Code...');
+    
     final scannedCode = await Navigator.of(context).push<String>(
       MaterialPageRoute(
         builder: (context) => const ScanQRScreen(),
       ),
     );
 
+    print('Retour du scanner. Code reçu: $scannedCode');
+
     if (scannedCode != null && scannedCode.isNotEmpty) {
-      _idController.text = scannedCode;
-      // Optionnel: prévisualiser automatiquement après le scan
-      await _previewSession();
+      final trimmedCode = scannedCode.trim();
+      print('Code traité et ajouté au champ: $trimmedCode');
+      
+      // Remplir le champ avec la valeur scannée
+      setState(() {
+        _idController.text = trimmedCode;
+      });
+      
+      // Afficher un message de confirmation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('QR Code scanné : $trimmedCode'),
+            backgroundColor: Colors.green[600],
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+      
+      // Prévisualiser automatiquement la session après le scan
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await _previewSession();
+      }
+    } else if (scannedCode == null) {
+      print('Scan annulé par l\'utilisateur');
+      // L'utilisateur a annulé le scan
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Scan annulé'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } else {
+      print('Code scanné vide ou invalide');
     }
   }
 

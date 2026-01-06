@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 
@@ -21,10 +21,22 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
   @override
   void reassemble() {
     super.reassemble();
-    if (Platform.isAndroid) {
-      controller?.pauseCamera();
-    } else if (Platform.isIOS) {
-      controller?.resumeCamera();
+    // Ne pas utiliser Platform sur le web
+    if (kIsWeb) {
+      // Sur le web, on ne fait rien car le scanner QR ne fonctionne pas de la même manière
+      return;
+    }
+    // Pour mobile, utiliser une approche conditionnelle
+    try {
+      // Vérifier la plateforme de manière sécurisée
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        controller?.pauseCamera();
+      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+        controller?.resumeCamera();
+      }
+    } catch (e) {
+      // Ignorer les erreurs de plateforme
+      print('Erreur lors de la gestion de la caméra: $e');
     }
   }
 
@@ -39,18 +51,44 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
 
     // On écoute le flux de données scannées
     controller.scannedDataStream.listen((scanData) {
+      // Debug: afficher le code scanné
+      print('QR Code scanné: ${scanData.code}');
+      
       // Si on a un code valide et qu'on n'a pas déjà fini
-      if (!isScanCompleted && scanData.code != null) {
+      if (!isScanCompleted && scanData.code != null && scanData.code!.isNotEmpty) {
+        final scannedCode = scanData.code!.trim();
+        print('Code traité: $scannedCode');
+        
+        // Vérifier que le widget est toujours monté
+        if (!mounted) {
+          print('Widget non monté, abandon');
+          return;
+        }
+        
+        // Marquer comme scanné immédiatement pour éviter les scans multiples
+        isScanCompleted = true;
+        
         setState(() {
-          isScanCompleted = true; // On verrouille
+          // Mise à jour de l'UI
         });
 
         // On met en pause la caméra immédiatement
         controller.pauseCamera();
+        print('Caméra mise en pause');
 
-        // On renvoie le code à la page précédente
-        Navigator.of(context).pop(scanData.code);
+        // Retourner immédiatement avec le code (pas besoin de délai)
+        if (mounted) {
+          print('Retour avec le code: $scannedCode');
+          // On renvoie le code à la page précédente
+          Navigator.of(context).pop(scannedCode);
+        } else {
+          print('Widget non monté lors du retour');
+        }
+      } else {
+        print('Code invalide ou déjà scanné. Code: ${scanData.code}, isScanCompleted: $isScanCompleted');
       }
+    }, onError: (error) {
+      print('Erreur lors du scan: $error');
     });
   }
 
@@ -86,32 +124,51 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
                 ),
               ),
             ),
-            Expanded(
-              flex: 1,
-              child: Center(
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              child: SingleChildScrollView(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.qr_code_scanner,
-                      color: Colors.white,
-                      size: 48,
+                    Icon(
+                      isScanCompleted ? Icons.check_circle : Icons.qr_code_scanner,
+                      color: isScanCompleted ? Colors.green : Colors.white,
+                      size: 28,
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      "Visez le QR Code",
-                      style: TextStyle(
+                    const SizedBox(height: 6),
+                    Text(
+                      isScanCompleted ? "QR Code détecté !" : "Visez le QR Code",
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 2),
                     Text(
-                      "Le code sera automatiquement détecté",
+                      isScanCompleted 
+                        ? "Retour en cours..." 
+                        : "Détection automatique",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.7),
-                        fontSize: 14,
+                        fontSize: 11,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        "Annuler",
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
                     ),
                   ],
@@ -124,4 +181,5 @@ class _ScanQRScreenState extends State<ScanQRScreen> {
     );
   }
 }
+
 
